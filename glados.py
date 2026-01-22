@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """GLaDOS 自动签到脚本"""
-from __future__ import annotations
 
 import os
 import time
@@ -27,13 +26,13 @@ def get_beijing_time():
     return datetime.datetime.utcnow() + datetime.timedelta(hours=8)
 
 
-def log(message: str):
+def log(message):
     """打印带时间戳的日志"""
     timestamp = get_beijing_time().strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] {message}")
+    print("[{}] {}".format(timestamp, message))
 
 
-def translate_checkin_message(raw_message: str) -> str:
+def translate_checkin_message(raw_message):
     """翻译签到结果消息"""
     translations = {
         "Please Try Tomorrow": "签到失败，请明天再试 🤖",
@@ -46,14 +45,14 @@ def translate_checkin_message(raw_message: str) -> str:
     if "Checkin! Got" in raw_message:
         try:
             points = raw_message.split("Got ")[1].split(" Points")[0]
-            return f"签到成功，获得 {points} 积分 🎉"
+            return "签到成功，获得 {} 积分 🎉".format(points)
         except IndexError:
             pass
     
-    return f"未知结果: {raw_message} ❓"
+    return "未知结果: {} ❓".format(raw_message)
 
 
-def generate_headers(cookie: str) -> dict:
+def generate_headers(cookie):
     """生成请求头"""
     return {
         "Accept": "application/json, text/plain, */*",
@@ -67,16 +66,16 @@ def generate_headers(cookie: str) -> dict:
     }
 
 
-def format_days(days_str: str) -> str:
+def format_days(days_str):
     """格式化剩余天数"""
     try:
         days = float(days_str)
-        return str(int(days)) if days.is_integer() else f"{days:.2f}"
+        return str(int(days)) if days.is_integer() else "{:.2f}".format(days)
     except (ValueError, TypeError):
         return str(days_str)
 
 
-def get_proxy_config() -> dict:
+def get_proxy_config():
     """获取代理配置"""
     http_proxy = os.getenv("HTTP_PROXY", "")
     https_proxy = os.getenv("HTTPS_PROXY", "")
@@ -86,7 +85,7 @@ def get_proxy_config() -> dict:
     return None
 
 
-def check_account_status(email: str, cookie: str, proxy: dict) -> tuple[str, bool]:
+def check_account_status(email, cookie, proxy):
     """
     检查账户状态
     返回: (状态消息, 是否成功)
@@ -100,24 +99,27 @@ def check_account_status(email: str, cookie: str, proxy: dict) -> tuple[str, boo
             proxies=proxy, 
             timeout=REQUEST_TIMEOUT
         )
+        log("  [DEBUG] 状态API响应码: {}".format(response.status_code))
+        log("  [DEBUG] 响应内容: {}".format(response.text[:500] if response.text else '空'))
+        
         response.raise_for_status()
         data = response.json()
         
         if data.get("code") != 0:
-            return f"API 错误: {data.get('message', '未知错误')}", False
+            return "API 错误: {}".format(data.get("message", "未知错误")), False
         
         left_days = format_days(data["data"]["leftDays"])
-        return f"剩余 {left_days} 天 🗓️", True
+        return "剩余 {} 天 🗓️".format(left_days), True
         
     except requests.Timeout:
         return "请求超时 ⏱️", False
     except requests.RequestException as e:
-        return f"网络错误: {e}", False
+        return "网络错误: {}".format(e), False
     except (KeyError, ValueError) as e:
-        return f"解析错误: {e}", False
+        return "解析错误: {}".format(e), False
 
 
-def checkin(email: str, cookie: str, proxy: dict) -> tuple[str, bool]:
+def checkin(email, cookie, proxy):
     """
     执行签到
     返回: (签到消息, 是否成功)
@@ -133,6 +135,9 @@ def checkin(email: str, cookie: str, proxy: dict) -> tuple[str, bool]:
             proxies=proxy,
             timeout=REQUEST_TIMEOUT
         )
+        log("  [DEBUG] 签到API响应码: {}".format(response.status_code))
+        log("  [DEBUG] 响应内容: {}".format(response.text[:500] if response.text else '空'))
+        
         response.raise_for_status()
         data = response.json()
         
@@ -144,21 +149,21 @@ def checkin(email: str, cookie: str, proxy: dict) -> tuple[str, bool]:
     except requests.Timeout:
         return "请求超时 ⏱️", False
     except requests.RequestException as e:
-        return f"网络错误: {e}", False
+        return "网络错误: {}".format(e), False
     except ValueError:
-        status = response.status_code if 'response' in dir() else 'N/A'
-        content = response.text[:100] if 'response' in dir() and response.text else '空响应'
-        return f"解析失败 (HTTP {status}): {content}", False
+        status = response.status_code if response else "N/A"
+        content = response.text[:100] if response and response.text else "空响应"
+        return "解析失败 (HTTP {}): {}".format(status, content), False
 
 
-def load_accounts() -> list[tuple[str, str]]:
+def load_accounts():
     """从环境变量加载账号列表"""
     accounts = []
     i = 1
     
     while True:
-        email = os.getenv(f"GLADOS_EMAIL_{i}")
-        cookie = os.getenv(f"GLADOS_COOKIE_{i}")
+        email = os.getenv("GLADOS_EMAIL_{}".format(i))
+        cookie = os.getenv("GLADOS_COOKIE_{}".format(i))
         
         if not email or not cookie:
             break
@@ -169,20 +174,17 @@ def load_accounts() -> list[tuple[str, str]]:
     return accounts
 
 
-def process_account(email: str, cookie: str, proxy: dict) -> dict:
-    """
-    处理单个账号的签到和状态检查
-    返回: 包含结果的字典
-    """
-    log(f"正在处理账号: {email}")
+def process_account(email, cookie, proxy):
+    """处理单个账号的签到和状态检查"""
+    log("正在处理账号: {}".format(email))
     
     # 签到
     checkin_msg, checkin_ok = checkin(email, cookie, proxy)
-    log(f"  签到: {checkin_msg}")
+    log("  签到: {}".format(checkin_msg))
     
     # 获取状态
     status_msg, status_ok = check_account_status(email, cookie, proxy)
-    log(f"  状态: {status_msg}")
+    log("  状态: {}".format(status_msg))
     
     return {
         "email": email,
@@ -208,19 +210,19 @@ def main():
         log("   需要设置 GLADOS_EMAIL_1, GLADOS_COOKIE_1 等")
         return
     
-    log(f"📋 共加载 {len(accounts)} 个账号")
+    log("📋 共加载 {} 个账号".format(len(accounts)))
     
     # 获取代理配置
     proxy = get_proxy_config()
     if proxy:
-        log(f"🌐 使用代理: {proxy.get('http', 'N/A')}")
+        log("🌐 使用代理: {}".format(proxy.get("http", "N/A")))
     
     # 处理每个账号
     results = []
     for idx, (email, cookie) in enumerate(accounts, 1):
         if idx > 1:
             delay = random.randint(3, 8)
-            log(f"⏳ 等待 {delay} 秒...")
+            log("⏳ 等待 {} 秒...".format(delay))
             time.sleep(delay)
         
         result = process_account(email, cookie, proxy)
@@ -234,10 +236,10 @@ def main():
     success_count = sum(1 for r in results if r["checkin_ok"])
     for r in results:
         icon = "✅" if r["checkin_ok"] else "❌"
-        log(f"{icon} {r['email']}: {r['checkin']} | {r['status']}")
+        log("{} {}: {} | {}".format(icon, r["email"], r["checkin"], r["status"]))
     
     log("-" * 50)
-    log(f"完成: {success_count}/{len(results)} 个账号签到成功")
+    log("完成: {}/{} 个账号签到成功".format(success_count, len(results)))
     log("=" * 50)
 
 
