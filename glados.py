@@ -45,24 +45,6 @@ def format_days(days_str):
         return str(int(days))
     return f"{days:.8f}".rstrip('0').rstrip('.')
 
-def send_notification(sign_messages, status_messages, bot_token, chat_id):
-    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-    sign_text = "🔔 GLaDOS 签到结果:\n" + "\n".join(sign_messages)
-    status_text = "\n⏳ GLaDOS 账号状态:\n" + "\n".join(status_messages)
-    beijing_time = datetime.datetime.utcnow() + datetime.timedelta(hours=8)
-    current_time = beijing_time.strftime("%Y-%m-%d %H:%M")
-    text = f"🕒 当前时间: {current_time}\n\n{sign_text}\n{status_text}\n\n✅ 签到任务完成"
-    data = {
-        "chat_id": chat_id,
-        "text": text,
-        "parse_mode": "HTML"
-    }
-    try:
-        response = requests.post(url, data=data)
-        response.raise_for_status()
-    except requests.RequestException as e:
-        print(f"发送 Telegram 消息失败: {e}")
-
 def check_account_status(email, cookie, proxy):
     url = "https://glados.cloud/api/user/status"
     headers = generate_headers(cookie)
@@ -128,8 +110,6 @@ def multi_account_sign():
         status_result = check_account_status(email, cookie, proxy)
         status_messages.append(status_result)
         time.sleep(random.randint(5, 15))
-
-    send_notification(sign_messages, status_messages, bot_token, chat_id)
 
 if __name__ == "__main__":
     multi_account_sign()
