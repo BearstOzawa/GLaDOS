@@ -85,10 +85,7 @@ def get_proxy_config():
 
 
 def check_account_status(email, cookie, proxy):
-    """
-    检查账户状态
-    返回: (状态消息, 是否成功)
-    """
+    """检查账户状态，返回: (状态消息, 是否成功)"""
     headers = generate_headers(cookie)
     
     try:
@@ -119,10 +116,7 @@ def check_account_status(email, cookie, proxy):
 
 
 def checkin(email, cookie, proxy):
-    """
-    执行签到
-    返回: (签到消息, 是否成功)
-    """
+    """执行签到，返回: (签到消息, 是否成功)"""
     headers = generate_headers(cookie)
     payload = {"token": "glados.cloud"}
     
@@ -194,6 +188,64 @@ def process_account(email, cookie, proxy):
     }
 
 
+def send_wecom_notification(results):
+    """发送企业微信机器人通知"""
+    webhook_url = os.getenv("WECOM_WEBHOOK_URL", "")
+    if not webhook_url:
+        log("⚠️ 未配置企业微信 Webhook，跳过推送")
+        return
+    
+    # 构建消息内容
+    success_count = sum(1 for r in results if r["checkin_ok"])
+    total_count = len(results)
+    
+    # 构建 Markdown 消息
+    lines = [
+        "## 📝 GLaDOS 签到报告",
+        "",
+        "⏰ **时间**: {}".format(get_beijing_time().strftime("%Y-%m-%d %H:%M:%S")),
+        "",
+        "### 签到结果",
+        "",
+    ]
+    
+    for r in results:
+        icon = "✅" if r["checkin_ok"] else "❌"
+        lines.append("> {} **{}**".format(icon, r["email"]))
+        lines.append("> - 签到: {}".format(r["checkin"]))
+        lines.append("> - 状态: {}".format(r["status"]))
+        lines.append("")
+    
+    lines.append("---")
+    lines.append("📊 **统计**: {}/{} 成功".format(success_count, total_count))
+    
+    content = "\n".join(lines)
+    
+    # 发送请求
+    payload = {
+        "msgtype": "markdown",
+        "markdown": {
+            "content": content
+        }
+    }
+    
+    try:
+        response = requests.post(
+            webhook_url,
+            json=payload,
+            timeout=10
+        )
+        response.raise_for_status()
+        result = response.json()
+        
+        if result.get("errcode") == 0:
+            log("📤 企业微信通知发送成功")
+        else:
+            log("❌ 企业微信通知发送失败: {}".format(result.get("errmsg", "未知错误")))
+    except requests.RequestException as e:
+        log("❌ 企业微信通知发送异常: {}".format(e))
+
+
 def main():
     """主函数"""
     load_dotenv()
@@ -240,6 +292,9 @@ def main():
     log("-" * 50)
     log("完成: {}/{} 个账号签到成功".format(success_count, len(results)))
     log("=" * 50)
+    
+    # 发送企业微信通知
+    send_wecom_notification(results)
 
 
 if __name__ == "__main__":

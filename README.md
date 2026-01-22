@@ -15,7 +15,7 @@
 
 2.1 在 GitHub 中设置 Secrets（环境变量）
 
-为了让 CI/CD 流程使用敏感信息（如 USER1, PASS1 等），我们使用 GitHub 的 Secrets 功能存储环境变量，这样可以安全地管理配置。
+为了让 CI/CD 流程使用敏感信息，我们使用 GitHub 的 Secrets 功能存储环境变量，这样可以安全地管理配置。
 
 步骤：
 打开你的 GitHub 仓库页面。
@@ -26,26 +26,24 @@
 
 点击 New repository secret 按钮，添加以下 Secrets：
 
+| 名称 | 说明 | 必填 |
+|------|------|------|
+| GLADOS_EMAIL_1 | 第一个账号的邮箱 | ✅ |
+| GLADOS_COOKIE_1 | 第一个账号的 Cookie | ✅ |
+| GLADOS_EMAIL_2 | 第二个账号的邮箱 | 可选 |
+| GLADOS_COOKIE_2 | 第二个账号的 Cookie | 可选 |
+| WECOM_WEBHOOK_URL | 企业微信机器人 Webhook 地址 | 可选 |
+| HTTP_PROXY | HTTP 代理地址 | 可选 |
+| HTTPS_PROXY | HTTPS 代理地址 | 可选 |
 
-HTTP_PROXY        HTTP代理地址 如果你需要的话
+可以继续添加 GLADOS_EMAIL_3, GLADOS_COOKIE_3 等更多账号...
 
-HTTPS_PROXY      HTTPS代理地址 如果你需要的话
+### 获取企业微信 Webhook
 
-GLADOS_EMAIL_1=   你的邮箱
-
-GLADOS_COOKIE_1=  账号的cookie
-
-GLADOS_EMAIL_2=
-
-GLADOS_COOKIE_2=
-
-GLADOS_EMAIL_3=
-
-GLADOS_COOKIE_3=
-
-# 可以继续添加更多账号...
+1. 在企业微信中创建群聊
+2. 点击群设置 → 群机器人 → 添加机器人
+3. 复制 Webhook 地址，格式如：`https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx`
 
 注意：Secrets 一旦设置好后，GitHub Actions 会自动读取它们，无需手动在每次提交时修改代码
-
 
 2.2 手动运行工作流，后续每天都会自动运行
