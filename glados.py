@@ -72,7 +72,7 @@ def sign(email, cookie, proxy):
     except requests.RequestException as e:
         translated_message = f"请求失败: {e}"
     except ValueError:
-        translated_message = f"解析响应失败: {response.text}"
+        translated_message = f"解析响应失败 (HTTP {response.status_code}): {response.text[:200] if response.text else '空响应'}"
     
     beijing_time = datetime.datetime.utcnow() + datetime.timedelta(hours=8)
     log_message = f"{beijing_time.strftime('%Y-%m-%d %H:%M')} {email}: {translated_message}"
@@ -81,8 +81,6 @@ def sign(email, cookie, proxy):
 
 def multi_account_sign():
     load_dotenv()
-    bot_token = os.getenv("TG_BOT_TOKEN")
-    chat_id = os.getenv("TG_CHAT_ID")
     proxy = {
         "http": os.getenv("HTTP_PROXY"),
         "https": os.getenv("HTTPS_PROXY")
