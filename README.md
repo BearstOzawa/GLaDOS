@@ -32,17 +32,17 @@
 | GLADOS_COOKIE_1 | 第一个账号的 Cookie | ✅ |
 | GLADOS_EMAIL_2 | 第二个账号的邮箱 | 可选 |
 | GLADOS_COOKIE_2 | 第二个账号的 Cookie | 可选 |
-| WECOM_WEBHOOK_URL | 企业微信机器人 Webhook 地址 | 可选 |
+| FEISHU_WEBHOOK_URL | 飞书机器人 Webhook 地址 | 可选 |
 | HTTP_PROXY | HTTP 代理地址 | 可选 |
 | HTTPS_PROXY | HTTPS 代理地址 | 可选 |
 
 可以继续添加 GLADOS_EMAIL_3, GLADOS_COOKIE_3 等更多账号...
 
-### 获取企业微信 Webhook
+### 获取飞书 Webhook
 
-1. 在企业微信中创建群聊
-2. 点击群设置 → 群机器人 → 添加机器人
-3. 复制 Webhook 地址，格式如：`https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx`
+1. 在飞书中创建群聊
+2. 点击群设置 → 群机器人 → 添加机器人 → 自定义机器人
+3. 复制 Webhook 地址，格式如：`https://open.feishu.cn/open-apis/bot/v2/hook/xxx`
 
 注意：Secrets 一旦设置好后，GitHub Actions 会自动读取它们，无需手动在每次提交时修改代码
 

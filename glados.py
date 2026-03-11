@@ -188,44 +188,36 @@ def process_account(email, cookie, proxy):
     }
 
 
-def send_wecom_notification(results):
-    """发送企业微信机器人通知"""
-    webhook_url = os.getenv("WECOM_WEBHOOK_URL", "")
+def send_feishu_notification(results):
+    """发送飞书机器人通知"""
+    webhook_url = os.getenv("FEISHU_WEBHOOK_URL", "")
     if not webhook_url:
-        log("⚠️ 未配置企业微信 Webhook，跳过推送")
+        log("⚠️ 未配置飞书 Webhook，跳过推送")
         return
     
     # 构建消息内容
     success_count = sum(1 for r in results if r["checkin_ok"])
     total_count = len(results)
     
-    # 构建 Markdown 消息
-    lines = [
-        "## 📝 GLaDOS 签到报告",
-        "",
-        "⏰ **时间**: {}".format(get_beijing_time().strftime("%Y-%m-%d %H:%M:%S")),
-        "",
-        "### 签到结果",
-        "",
-    ]
-    
+    # 构建富文本内容
+    content_lines = []
     for r in results:
         icon = "✅" if r["checkin_ok"] else "❌"
-        lines.append("> {} **{}**".format(icon, r["email"]))
-        lines.append("> - 签到: {}".format(r["checkin"]))
-        lines.append("> - 状态: {}".format(r["status"]))
-        lines.append("")
+        content_lines.append([{"tag": "text", "text": "{} {} | {} | {}".format(icon, r["email"], r["checkin"], r["status"])}])
     
-    lines.append("---")
-    lines.append("📊 **统计**: {}/{} 成功".format(success_count, total_count))
+    content_lines.append([{"tag": "text", "text": ""}])
+    content_lines.append([{"tag": "text", "text": "📊 统计: {}/{} 成功".format(success_count, total_count)}])
     
-    content = "\n".join(lines)
-    
-    # 发送请求
+    # 飞书富文本消息格式
     payload = {
-        "msgtype": "markdown",
-        "markdown": {
-            "content": content
+        "msg_type": "post",
+        "content": {
+            "post": {
+                "zh_cn": {
+                    "title": "📝 GLaDOS 签到报告 | {}".format(get_beijing_time().strftime("%Y-%m-%d %H:%M:%S")),
+                    "content": content_lines
+                }
+            }
         }
     }
     
@@ -238,12 +230,12 @@ def send_wecom_notification(results):
         response.raise_for_status()
         result = response.json()
         
-        if result.get("errcode") == 0:
-            log("📤 企业微信通知发送成功")
+        if result.get("code") == 0 or result.get("StatusCode") == 0:
+            log("📤 飞书通知发送成功")
         else:
-            log("❌ 企业微信通知发送失败: {}".format(result.get("errmsg", "未知错误")))
+            log("❌ 飞书通知发送失败: {}".format(result.get("msg", result.get("StatusMessage", "未知错误"))))
     except requests.RequestException as e:
-        log("❌ 企业微信通知发送异常: {}".format(e))
+        log("❌ 飞书通知发送异常: {}".format(e))
 
 
 def main():
@@ -293,8 +285,8 @@ def main():
     log("完成: {}/{} 个账号签到成功".format(success_count, len(results)))
     log("=" * 50)
     
-    # 发送企业微信通知
-    send_wecom_notification(results)
+    # 发送飞书通知
+    send_feishu_notification(results)
 
 
 if __name__ == "__main__":
