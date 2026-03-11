@@ -189,35 +189,67 @@ def process_account(email, cookie, proxy):
 
 
 def send_feishu_notification(results):
-    """发送飞书机器人通知"""
+    """发送飞书机器人通知（卡片消息）"""
     webhook_url = os.getenv("FEISHU_WEBHOOK_URL", "")
     if not webhook_url:
         log("⚠️ 未配置飞书 Webhook，跳过推送")
         return
     
-    # 构建消息内容
     success_count = sum(1 for r in results if r["checkin_ok"])
     total_count = len(results)
     
-    # 构建富文本内容
-    content_lines = []
-    for r in results:
-        icon = "✅" if r["checkin_ok"] else "❌"
-        content_lines.append([{"tag": "text", "text": "{} {} | {} | {}".format(icon, r["email"], r["checkin"], r["status"])}])
-    
-    content_lines.append([{"tag": "text", "text": ""}])
-    content_lines.append([{"tag": "text", "text": "📊 统计: {}/{} 成功".format(success_count, total_count)}])
-    
-    # 飞书富文本消息格式
-    payload = {
-        "msg_type": "post",
-        "content": {
-            "post": {
-                "zh_cn": {
-                    "title": "📝 GLaDOS 签到报告 | {}".format(get_beijing_time().strftime("%Y-%m-%d %H:%M:%S")),
-                    "content": content_lines
-                }
+    # 卡片元素
+    elements = [
+        {
+            "tag": "div",
+            "text": {
+                "tag": "lark_md",
+                "content": "**触发时间：** `{}`".format(get_beijing_time().strftime("%Y-%m-%d %H:%M:%S"))
             }
+        },
+        {"tag": "hr"},
+    ]
+    
+    # 成功列表
+    success_items = [r for r in results if r["checkin_ok"]]
+    fail_items = [r for r in results if not r["checkin_ok"]]
+    
+    if success_items:
+        lines = ["🟢 **签到成功：**\n"]
+        for r in success_items:
+            lines.append("{}\n{}".format(r["email"], r["status"]))
+        elements.append({
+            "tag": "div",
+            "text": {"tag": "lark_md", "content": "\n".join(lines)}
+        })
+    
+    if fail_items:
+        lines = ["🔴 **签到失败：**\n"]
+        for r in fail_items:
+            lines.append("{}\n{} | {}".format(r["email"], r["checkin"], r["status"]))
+        elements.append({
+            "tag": "div",
+            "text": {"tag": "lark_md", "content": "\n".join(lines)}
+        })
+    
+    elements.append({"tag": "hr"})
+    elements.append({
+        "tag": "note",
+        "elements": [
+            {"tag": "plain_text", "content": "📊 统计: {}/{} 成功".format(success_count, total_count)}
+        ]
+    })
+    
+    # 飞书卡片消息
+    header_color = "green" if success_count == total_count else ("red" if success_count == 0 else "orange")
+    payload = {
+        "msg_type": "interactive",
+        "card": {
+            "header": {
+                "title": {"tag": "plain_text", "content": "📝 GLaDOS 签到报告"},
+                "template": header_color
+            },
+            "elements": elements
         }
     }
     
